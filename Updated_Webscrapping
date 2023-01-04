@@ -1,0 +1,148 @@
+"""
+Project Title: Web Scrapping and Visualizing the extracted Data
+Participants : 
+    1.Mythili Battula #sID:101746051
+    2.Akhil Reddy Patkuri #sID:1017413970
+Date of creation:12/11/2022
+Web page used: https://www.ebay.com/t/Video-Game-Consoles/139971/bn_320033
+
+Plots used: Scatterplot and Bargraph
+    DESCRIPTION:
+    For this Project, we retrieved a page of ebay from the web, cleaned the data, extracted the information, and then visualized it.
+    Here we have taken a page consisting of video-game consoles as our products and done analysis for its highest and lowest rating and 
+    higest and lowest price for the products. Also, we have taken two graphs to visualize the data namely Scatterplot and Bargraph where 
+    Scatterplot is used to plot for Item_Price and Item_Title and bargraph is used for Item_Title and Item_Rating.
+    """
+#Importing Required Modules
+import csv #Module to get csv files and its operations
+import requests #To get url from web
+from bs4 import BeautifulSoup #To parse the data from url
+import re #Module to use Regular expressions
+import pandas as pd #Module to analyse the data
+import matplotlib.pyplot as plt #for creating interactive visualization
+import seaborn as sns #for data visualization
+from tabulate import tabulate #Module for formatting csv and displaying the required data
+
+#Getting user name
+UserName = input("\nWelcome..!\nPlease Enter UserName:")
+print(f'\nHello {UserName}...')
+
+
+def create_dataframe(): #creating function create_dataframe
+    my_url = "https://www.ebay.com/t/Video-Game-Consoles/139971/bn_320033" #desired web page url to process the data
+
+
+    result = requests.get(my_url) #Getting the url using requests
+
+    soup = BeautifulSoup(result.text, 'html.parser') #parsing the data we got from the web page
+
+    product_list = [] #defining an empty array list to store data to be scraped
+ 
+    products = soup.find_all('div', class_='app-tp-product-card') #using findall methodwe are gettinh the required products from the url
+
+
+    for product in products: #for loop to get the individual values such as title,price,category,ratings for the products we are getting from the webpage
+
+        productTitle = product.find('h2', class_='title').text
+
+        get_price = product.find('span', class_='cc-ts-BOLD').text.split(" ")[0]
+
+        productPrice = re.sub("[$,]","", get_price, re.IGNORECASE)
+
+        productCategory = product.find('span', class_='cc-ts-BOLD').text.split(" ")[1]
+
+        productRatings = product.find('div', class_='reviews-aggregated-stars')
+
+        p_rating = productRatings.find('span', class_='clipped').text
+
+        try: #using regular expressions we are eliminating the special characters that are present in the webpage
+            regex = re.compile('(.+)out')
+            rate = regex.search(p_rating).group(1)
+        except:
+            rate = 0
+        #we are appending the values to the list
+        product_list.append([productTitle, productPrice, productCategory, float(rate)])
+    return product_list
+
+#Here we are creating analysis to get the highest/lowest prices and ratings
+def get_analysis():
+    df = pd.read_csv('import_data.csv')
+
+    max_price = df['item_price'].max()
+    max_title_price = (df.loc[df['item_price'] == max_price]['item_title']).iloc[0]
+    min_price = df['item_price'].min()
+    min_title_price = (df.loc[df['item_price'] == min_price]['item_title']).iloc[0]
+    max_rating = df['item_rating'].max()
+    max_title_rating = (df.loc[df['item_rating'] == max_rating]['item_title']).iloc[0]
+    min_rating = df['item_rating'].min()
+    min_title_rating = (df.loc[df['item_rating'] == min_rating]['item_title']).iloc[0]
+
+
+    print("\nthe highest pricing product is: {} - Worth: ${}".format(max_title_price,
+                                                                     max_price))
+    print("the lowest pricing product is: {} - Worth: ${}".format(min_title_price, min_price))
+    print("the highest rated product is: {} - {} stars".format(max_title_rating, max_rating))
+    print("the lowest rated product is: {} - {} stars".format(min_title_rating, min_rating))
+
+#we are writing the data to the csv file
+def writefile_CSV(df):
+    with open('import_data.csv', 'w', newline='', encoding="utf-8") as f:
+        csv_row = ['item_title', 'item_price', 'item_category', 'item_rating']
+        w = csv.writer(f)
+        w.writerow(csv_row)
+        w.writerows(df) #appending data to rows from create data frame
+
+#here we are plotting scattergraph for item_price vs Item_title
+def display_scattergraph():
+    readcsv_Data = pd.read_csv('import_data.csv', encoding='unicode_escape', nrows=20)
+    f = open("import_data.csv")
+    csv_f = csv.reader(f)
+    print(tabulate(csv_f, headers='firstrow', tablefmt='pipe')) #printing data format 
+    new_df = readcsv_Data.sort_values(["item_price"], ascending=True)
+    plt.subplots(figsize=(6, 5), dpi=40)# window formatting
+    plt.scatter(new_df['item_price'], new_df['item_title'], c='green')# getting data and plotting 
+    plt.xlabel('Item Price')
+    plt.ylabel('Item Title')
+    plt.tick_params(axis='y', rotation=45)
+    plt.show()
+
+#Here we rae plotting bargraph for Item-title vs Item_ratings
+def display_bargraph():
+    readcsv_Data = pd.read_csv('import_data.csv', encoding='unicode_escape', nrows=20)
+    f = open("import_data.csv")
+    csv_f = csv.reader(f)
+    print(tabulate(csv_f, headers='firstrow', tablefmt='pipe'))
+    new_df = readcsv_Data.sort_values(["item_rating"], ascending=True)
+    plt.subplots(figsize=(6, 5), dpi=40)
+    plt.tick_params(axis='y', rotation=45)
+    sns.barplot(y=new_df['item_title'], x=new_df['item_rating'], color="b")
+    plt.show()
+
+#In this main method we are calling methods to display required output
+def main():
+    df = create_dataframe()
+    writefile_CSV(df)
+    while True:
+        print(" \nThis program gives two diffrent graphical representations and analysis for prices and rating on Video Games-Console...!\n\nMenu -"
+                 "\n1 - Scatter Graph for Title and Price\n2 - Bar Graph between Title and Rating"
+                 "\n3 - Get analysis for high/Low prices and High/low Rating"
+                 "\n4 - Exit")
+        user_choice = int(input(
+            "\n\nEnter your choice from the above menu:"))
+        if user_choice == 1:
+
+            display_scattergraph()
+
+        elif user_choice == 2:
+            display_bargraph()
+
+        elif user_choice == 3:
+            get_analysis()
+
+        elif user_choice == 4:
+            print(f"Thank you {UserName}..!")
+            break
+        else:
+            print("Please select from below option...")
+
+main()
